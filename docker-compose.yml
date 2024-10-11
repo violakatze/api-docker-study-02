@@ -1,0 +1,59 @@
+# Please refer https://aka.ms/HTTPSinContainer on how to setup an https developer certificate for your ASP.NET Core service.
+
+version: '3.4'
+
+services:
+  apidockerstudy02:
+    image: apidockerstudy02
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 5296:5296
+    networks:
+      - net-net
+    depends_on:
+      - db
+    environment:
+      ConnectionStrings__aaa: Server=net-db;Port=3306;Uid=root;Pwd=password;Database=db;SSL Mode=Required;
+    volumes:
+      - .:/src
+    command: dotnet watch run
+
+  db:
+    container_name: net-db
+    platform: linux/x86_64
+    image: mysql:8.4
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+      MYSQL_USER: db
+      MYSQL_PASSWORD: password
+    command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      # - ./mysql/init:/docker-entrypoint-initdb.d
+      # - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - net-net
+
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migration
+    environment:
+      - ConnectionStrings__aaa=Server=net-db;Port=3306;User Id=root;Password=password;Database=db;SSL Mode=Required;
+      - ASPNETCORE_ENVIRONMENT=DockerDevelopment #apiをローカル実行した際にappsettingsが被らないようにした
+    depends_on:
+      - db
+    profiles:
+      - donotstart
+    networks:
+      - net-net
+
+networks:
+  net-net:
+    driver: bridge
